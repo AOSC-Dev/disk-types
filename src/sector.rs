@@ -18,10 +18,10 @@ pub trait SectorExt: BlockDeviceExt {
             Sector::Unit(size) => size,
             Sector::UnitFromEnd(size) => end() - size,
             Sector::Percent(value) => {
-                if value == ::std::u16::MAX {
+                if value == u16::MAX {
                     self.get_sectors()
                 } else {
-                    ((self.get_sectors() * self.get_logical_block_size()) / ::std::u16::MAX as u64)
+                    ((self.get_sectors() * self.get_logical_block_size()) / u16::MAX as u64)
                         * value as u64
                         / self.get_logical_block_size()
                 }
@@ -54,23 +54,25 @@ pub enum Sector {
 }
 
 impl From<u64> for Sector {
-    fn from(sectors: u64) -> Sector { Sector::Unit(sectors) }
+    fn from(sectors: u64) -> Sector {
+        Sector::Unit(sectors)
+    }
 }
 
 impl FromStr for Sector {
     type Err = &'static str;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        if input.ends_with('M') {
-            if input.starts_with('-') {
-                if let Ok(value) = input[1..input.len() - 1].parse::<u64>() {
+        if let Some(v_without_end) = input.strip_suffix('M') {
+            if let Some(v_without_start) = input.strip_prefix('-') {
+                if let Ok(value) = v_without_start.parse::<u64>() {
                     return Ok(Sector::MegabyteFromEnd(value));
                 }
-            } else if let Ok(value) = input[..input.len() - 1].parse::<u64>() {
+            } else if let Ok(value) = v_without_end.parse::<u64>() {
                 return Ok(Sector::Megabyte(value));
             }
-        } else if input.ends_with('%') {
-            if let Ok(value) = input[..input.len() - 1].parse::<u16>() {
+        } else if let Some(v) = input.strip_suffix('%') {
+            if let Ok(value) = v.parse::<u16>() {
                 if value <= 100 {
                     return Ok(Sector::Percent(value));
                 }
@@ -94,18 +96,26 @@ impl FromStr for Sector {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::u16;
     use std::path::Path;
+    use std::u16;
 
     struct FictionalBlock(u64);
 
     impl SectorExt for FictionalBlock {}
 
     impl BlockDeviceExt for FictionalBlock {
-        fn get_device_name(&self) -> &str { "fictional" }
-        fn get_device_path(&self) -> &Path { Path::new("/dev/fictional")  }
-        fn get_sectors(&self) -> u64 { self.0 }
-        fn get_logical_block_size(&self) -> u64 { 512 }
+        fn get_device_name(&self) -> &str {
+            "fictional"
+        }
+        fn get_device_path(&self) -> &Path {
+            Path::new("/dev/fictional")
+        }
+        fn get_sectors(&self) -> u64 {
+            self.0
+        }
+        fn get_logical_block_size(&self) -> u64 {
+            512
+        }
     }
 
     #[test]
@@ -160,6 +170,9 @@ mod tests {
         assert_eq!("20480M".parse::<Sector>(), Ok(Sector::Megabyte(20480)));
         assert_eq!("-0M".parse::<Sector>(), Ok(Sector::MegabyteFromEnd(0)));
         assert_eq!("-500M".parse::<Sector>(), Ok(Sector::MegabyteFromEnd(500)));
-        assert_eq!("-20480M".parse::<Sector>(), Ok(Sector::MegabyteFromEnd(20480)));
+        assert_eq!(
+            "-20480M".parse::<Sector>(),
+            Ok(Sector::MegabyteFromEnd(20480))
+        );
     }
 }

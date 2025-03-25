@@ -81,7 +81,10 @@ pub fn sectors_used<P: AsRef<Path>>(part: P, fs: FileSystem) -> io::Result<u64> 
             let reader = Cursor::new(cmd.stdout).lines().skip(1);
             get_btrfs_usage(reader)
         }
-        _ => Err(io::Error::new(io::ErrorKind::NotFound, "unsupported file system")),
+        _ => Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            "unsupported file system",
+        )),
     }
 }
 
@@ -124,13 +127,16 @@ fn parse_fsck_field<R: Iterator<Item = io::Result<String>>>(
                     match line.split_whitespace().next().map(|v| v.parse::<u64>()) {
                         Some(Ok(value)) => break Ok(value),
                         _ => {
-                            break Err(io::Error::new(io::ErrorKind::Other, "invalid dump output"))
+                            break Err(io::Error::new(io::ErrorKind::Other, "invalid dump output"));
                         }
                     }
                 }
             }
             None => {
-                break Err(io::Error::new(io::ErrorKind::Other, "invalid dump output: EOF"));
+                break Err(io::Error::new(
+                    io::ErrorKind::Other,
+                    "invalid dump output: EOF",
+                ));
             }
         }
     }
@@ -143,7 +149,10 @@ fn parse_fsck_cluster_summary<R: Iterator<Item = io::Result<String>>>(
         match reader.next() {
             Some(line) => {
                 let line = line?;
-                if line.split_whitespace().next().map_or(false, |word| word.ends_with(':')) {
+                if line
+                    .split_whitespace()
+                    .next().is_some_and(|word| word.ends_with(':'))
+                {
                     if let Some(stats) = line.split_whitespace().nth(3) {
                         if let Some(id) = stats.find('/') {
                             if stats.len() > id + 1 {
@@ -160,7 +169,10 @@ fn parse_fsck_cluster_summary<R: Iterator<Item = io::Result<String>>>(
                 }
             }
             None => {
-                break Err(io::Error::new(io::ErrorKind::Other, "invalid dump output: EOF"));
+                break Err(io::Error::new(
+                    io::ErrorKind::Other,
+                    "invalid dump output: EOF",
+                ));
             }
         }
     }
@@ -202,7 +214,10 @@ fn parse_unit(unit: &str) -> io::Result<u64> {
         "MiB" => Ok((value * 1024f64 * 1024f64) as u64),
         "GiB" => Ok((value * 1024f64 * 1024f64 * 1024f64) as u64),
         "TiB" => Ok((value * 1024f64 * 1024f64 * 1024f64 * 1024f64) as u64),
-        _ => Err(io::Error::new(io::ErrorKind::Other, format!("invalid unit type: {}", unit))),
+        _ => Err(io::Error::new(
+            io::ErrorKind::Other,
+            format!("invalid unit type: {}", unit),
+        )),
     }
 }
 
@@ -300,37 +315,64 @@ Checking for unused clusters.
     #[test]
     fn fat_parsing() {
         let mut reader = FAT_INPUT.lines().map(|x| Ok(x.into()));
-        assert_eq!(parse_fsck_field(&mut reader, "bytes per cluster").unwrap(), 4096);
-        assert_eq!(parse_fsck_cluster_summary(&mut reader).unwrap(), (1, 261628));
+        assert_eq!(
+            parse_fsck_field(&mut reader, "bytes per cluster").unwrap(),
+            4096
+        );
+        assert_eq!(
+            parse_fsck_cluster_summary(&mut reader).unwrap(),
+            (1, 261628)
+        );
     }
 
     #[test]
     fn fat_parsing2() {
         let mut reader = FAT2_INPUT.lines().map(|x| Ok(x.into()));
-        assert_eq!(parse_fsck_field(&mut reader, "bytes per cluster").unwrap(), 4096);
-        assert_eq!(parse_fsck_cluster_summary(&mut reader).unwrap(), (66356, 130812));
+        assert_eq!(
+            parse_fsck_field(&mut reader, "bytes per cluster").unwrap(),
+            4096
+        );
+        assert_eq!(
+            parse_fsck_cluster_summary(&mut reader).unwrap(),
+            (66356, 130812)
+        );
     }
 
     #[test]
     fn fat_parsing3() {
         let mut reader = FAT3_INPUT.lines().map(|x| Ok(x.into()));
-        assert_eq!(parse_fsck_field(&mut reader, "bytes per cluster").unwrap(), 8192);
-        assert_eq!(parse_fsck_cluster_summary(&mut reader).unwrap(), (24176, 65501));
+        assert_eq!(
+            parse_fsck_field(&mut reader, "bytes per cluster").unwrap(),
+            8192
+        );
+        assert_eq!(
+            parse_fsck_cluster_summary(&mut reader).unwrap(),
+            (24176, 65501)
+        );
     }
 
     #[test]
     fn fat_usage() {
-        assert_eq!(get_fat_usage(FAT_INPUT.lines().map(|x| Ok(x.into()))).unwrap(), 8);
+        assert_eq!(
+            get_fat_usage(FAT_INPUT.lines().map(|x| Ok(x.into()))).unwrap(),
+            8
+        );
     }
 
     #[test]
     fn fat_usage2() {
-        assert_eq!(get_fat_usage(FAT2_INPUT.lines().map(|x| Ok(x.into()))).unwrap(), 530848);
+        assert_eq!(
+            get_fat_usage(FAT2_INPUT.lines().map(|x| Ok(x.into()))).unwrap(),
+            530848
+        );
     }
 
     #[test]
     fn fat_usage3() {
-        assert_eq!(get_fat_usage(FAT3_INPUT.lines().map(|x| Ok(x.into()))).unwrap(), 386816);
+        assert_eq!(
+            get_fat_usage(FAT3_INPUT.lines().map(|x| Ok(x.into()))).unwrap(),
+            386816
+        );
     }
 
     const EXT_INPUT: &str = r#"dumpe2fs 1.43.9 (8-Feb-2018)
@@ -388,15 +430,24 @@ Journal start:            0
 
     #[test]
     fn ext_usage() {
-        assert_eq!(get_ext4_usage(EXT_INPUT.lines().map(|x| Ok(x.into()))).unwrap(), 1010312);
+        assert_eq!(
+            get_ext4_usage(EXT_INPUT.lines().map(|x| Ok(x.into()))).unwrap(),
+            1010312
+        );
     }
 
     #[test]
     fn ext_parsing() {
         let mut reader = EXT_INPUT.lines().map(|x| Ok(x.into()));
-        assert_eq!(parse_field(&mut reader, "Block count:", 2).unwrap(), 5242880);
+        assert_eq!(
+            parse_field(&mut reader, "Block count:", 2).unwrap(),
+            5242880
+        );
 
-        assert_eq!(parse_field(&mut reader, "Free blocks:", 2).unwrap(), 5116591);
+        assert_eq!(
+            parse_field(&mut reader, "Free blocks:", 2).unwrap(),
+            5116591
+        );
 
         assert_eq!(parse_field(&mut reader, "Block size:", 2).unwrap(), 4096);
     }
@@ -417,7 +468,10 @@ Please make a test run using both the -n and -s options before real resizing!"#;
     #[test]
     fn ntfs_usage() {
         let reader = NTFS_INPUT.lines().map(|x| Ok(x.into()));
-        assert_eq!(get_ntfs_usage(reader).unwrap(), 133_256 + (2 * 1024 * 1024) / 512);
+        assert_eq!(
+            get_ntfs_usage(reader).unwrap(),
+            133_256 + (2 * 1024 * 1024) / 512
+        );
     }
 
     const BTRFS_INPUT: &str = r#"Label: none  uuid: 8a69ba4c-6cf5-46cc-aff3-f0c23251a21b

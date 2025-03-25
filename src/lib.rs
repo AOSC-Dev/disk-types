@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate err_derive;
-
 mod device;
 mod fs;
 mod partition;

@@ -13,13 +13,14 @@ use sysfs_class::{Block, SysClass};
 /// This trait is required to implement other disk traits.
 pub trait BlockDeviceExt {
     /// The sys path of the block device.
-    fn sys_block_path(&self) -> PathBuf { sys_block_path(self.get_device_name(), "") }
+    fn sys_block_path(&self) -> PathBuf {
+        sys_block_path(self.get_device_name(), "")
+    }
 
     /// Checks if the device is a read-only device.
     fn is_read_only(&self) -> bool {
         Block::from_path(&self.sys_block_path())
-            .ok()
-            .map_or(false, |block| block.ro().ok() == Some(1))
+            .ok().is_some_and(|block| block.ro().ok() == Some(1))
     }
 
     /// Checks if the device is a removable device.
@@ -28,8 +29,7 @@ pub trait BlockDeviceExt {
     /// This is only applicable for disk devices.
     fn is_removable(&self) -> bool {
         Block::from_path(&self.sys_block_path())
-            .ok()
-            .map_or(false, |block| block.removable().ok() == Some(1))
+            .ok().is_some_and(|block| block.removable().ok() == Some(1))
     }
 
     /// Checks if the device is a rotational device.
@@ -38,15 +38,16 @@ pub trait BlockDeviceExt {
     /// This is only applicable for disk devices.
     fn is_rotational(&self) -> bool {
         Block::from_path(&self.sys_block_path())
-            .ok()
-            .map_or(false, |block| block.queue_rotational().ok() == Some(1))
+            .ok().is_some_and(|block| block.queue_rotational().ok() == Some(1))
     }
 
     /// The path to the block device, such as `/dev/sda1`, or `/dev/data/root`.
     fn get_device_path(&self) -> &Path;
 
     /// The mount point of this block device, if it is mounted.
-    fn get_mount_point(&self) -> Option<&Path> { None }
+    fn get_mount_point(&self) -> Option<&Path> {
+        None
+    }
 
     /// The name of the device, such as `sda1`.
     fn get_device_name(&self) -> &str {

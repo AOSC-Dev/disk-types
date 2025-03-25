@@ -32,37 +32,48 @@ pub trait PartitionExt: BlockDeviceExt {
     fn get_sector_start(&self) -> u64;
 
     /// Returns the length of the partition in sectors.
-    fn get_sectors(&self) -> u64 { self.get_sector_end() - self.get_sector_start() }
+    fn get_sectors(&self) -> u64 {
+        self.get_sector_end() - self.get_sector_start()
+    }
 
     /// True if the partition is an ESP partition.
     fn is_esp_partition(&self) -> bool {
-        self.get_file_system().map_or(false, |fs| {
+        self.get_file_system().is_some_and(|fs| {
             (fs == Fat16 || fs == Fat32)
-                && self.get_partition_flags().contains(&PartitionFlag::PED_PARTITION_ESP)
+                && self
+                    .get_partition_flags()
+                    .contains(&PartitionFlag::PED_PARTITION_ESP)
         })
     }
 
     /// True if the partition is compatible for Linux to be installed on it.
     fn is_linux_compatible(&self) -> bool {
-        self.get_file_system().map_or(false, |fs| match fs {
+        self.get_file_system().is_some_and(|fs| match fs {
             Exfat | Ntfs | Fat16 | Fat32 | Lvm | Luks | Swap => false,
             Btrfs | Xfs | Ext2 | Ext3 | Ext4 | F2fs => true,
         })
     }
 
     /// True if this is a LUKS partition
-    fn is_luks(&self) -> bool { self.get_file_system().map_or(false, |fs| fs == FileSystem::Luks) }
+    fn is_luks(&self) -> bool {
+        self.get_file_system()
+            .is_some_and(|fs| fs == FileSystem::Luks)
+    }
 
     /// True if the partition is a swap partition.
-    fn is_swap(&self) -> bool { self.get_file_system().map_or(false, |fs| fs == FileSystem::Swap) }
+    fn is_swap(&self) -> bool {
+        self.get_file_system()
+            .is_some_and(|fs| fs == FileSystem::Swap)
+    }
 
     /// Mount the file system at a temporary directory, and allow the caller to scan it.
     fn probe<T, F>(&self, mut func: F) -> T
     where
         F: FnMut(Option<(&Path, UnmountDrop<Mount>)>) -> T,
     {
-        let mount =
-            self.get_file_system().and_then(|fs| TempDir::new("distinst").ok().map(|t| (fs, t)));
+        let mount = self
+            .get_file_system()
+            .and_then(|fs| TempDir::new("distinst").ok().map(|t| (fs, t)));
 
         if let Some((fs, tempdir)) = mount {
             let fs = match fs {
@@ -72,7 +83,10 @@ pub trait PartitionExt: BlockDeviceExt {
 
             // Mount the FS to the temporary directory
             let base = tempdir.path();
-            if let Ok(m) = Mount::builder().fstype(fs).mount(self.get_device_path(), base) {
+            if let Ok(m) = Mount::builder()
+                .fstype(fs)
+                .mount(self.get_device_path(), base)
+            {
                 return func(Some((base, m.into_unmount_drop(UnmountFlags::DETACH))));
             }
         }
@@ -139,51 +153,69 @@ mod tests {
 
     struct Fake {
         start_sector: u64,
-        end_sector:   u64,
-        filesystem:   Option<FileSystem>,
-        name:         Option<String>,
-        part_type:    PartitionType,
-        flags:        Vec<PartitionFlag>,
+        end_sector: u64,
+        filesystem: Option<FileSystem>,
+        name: Option<String>,
+        part_type: PartitionType,
+        flags: Vec<PartitionFlag>,
     }
 
     impl Default for Fake {
         fn default() -> Fake {
             Self {
                 start_sector: 0,
-                end_sector:   1,
-                filesystem:   None,
-                name:         None,
-                part_type:    PartitionType::Primary,
-                flags:        Vec::new(),
+                end_sector: 1,
+                filesystem: None,
+                name: None,
+                part_type: PartitionType::Primary,
+                flags: Vec::new(),
             }
         }
     }
 
     impl BlockDeviceExt for Fake {
-        fn get_device_name(&self) -> &str { "fictional" }
+        fn get_device_name(&self) -> &str {
+            "fictional"
+        }
 
-        fn get_device_path(&self) -> &Path { Path::new("/dev/fictional")  }
+        fn get_device_path(&self) -> &Path {
+            Path::new("/dev/fictional")
+        }
     }
 
     impl PartitionExt for Fake {
-        fn get_file_system(&self) -> Option<FileSystem> { self.filesystem }
+        fn get_file_system(&self) -> Option<FileSystem> {
+            self.filesystem
+        }
 
-        fn get_partition_flags(&self) -> &[PartitionFlag] { &self.flags }
+        fn get_partition_flags(&self) -> &[PartitionFlag] {
+            &self.flags
+        }
 
-        fn get_partition_label(&self) -> Option<&str> { self.name.as_ref().map(|s| s.as_str()) }
+        fn get_partition_label(&self) -> Option<&str> {
+            self.name.as_deref()
+        }
 
-        fn get_partition_type(&self) -> PartitionType { self.part_type }
+        fn get_partition_type(&self) -> PartitionType {
+            self.part_type
+        }
 
-        fn get_sector_end(&self) -> u64 { self.end_sector }
+        fn get_sector_end(&self) -> u64 {
+            self.end_sector
+        }
 
-        fn get_sector_start(&self) -> u64 { self.start_sector }
+        fn get_sector_start(&self) -> u64 {
+            self.start_sector
+        }
     }
 
     #[test]
     fn sector_lies_within() {
-        let mut part = Fake::default();
-        part.start_sector = 100_000;
-        part.end_sector = 10_000_000;
+        let part = Fake {
+            start_sector: 100_000,
+            end_sector: 10_000_000,
+            ..Default::default()
+        };
 
         assert!(part.sector_lies_within(100_000));
         assert!(part.sector_lies_within(10_000_000));
@@ -194,9 +226,11 @@ mod tests {
 
     #[test]
     fn sectors_overlap() {
-        let mut part = Fake::default();
-        part.start_sector = 100_000;
-        part.end_sector = 10_000_000;
+        let part = Fake {
+            start_sector: 100_000,
+            end_sector: 10_000_000,
+            ..Default::default()
+        };
 
         assert!(!part.sectors_overlap(0, 99999));
         assert!(part.sectors_overlap(0, 100_000));

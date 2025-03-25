@@ -8,11 +8,11 @@ pub enum PartitionTable {
 }
 
 /// A possible error when validating the partition table.
-#[derive(Debug, Error, PartialEq)]
+#[derive(Debug, thiserror::Error, PartialEq)]
 pub enum PartitionTableError {
-    #[error(display = "primary partitions exceeded on partition table")]
+    #[error("primary partitions exceeded on partition table")]
     PrimaryPartitionsExceeded,
-    #[error(display = "partition table not found")]
+    #[error("partition table not found")]
     NotFound,
 }
 
@@ -58,22 +58,32 @@ mod tests {
     }
 
     impl BlockDeviceExt for FictionalBlock {
-        fn get_device_name(&self) -> &str { "fictional" }
+        fn get_device_name(&self) -> &str {
+            "fictional"
+        }
 
-        fn get_device_path(&self) -> &Path { Path::new("/dev/fictional")  }
+        fn get_device_path(&self) -> &Path {
+            Path::new("/dev/fictional")
+        }
 
-        fn get_mount_point(&self) -> Option<&Path> { None }
+        fn get_mount_point(&self) -> Option<&Path> {
+            None
+        }
     }
 
     impl PartitionTableExt for FictionalBlock {
-        fn get_partition_table(&self) -> Option<PartitionTable> { Some(PartitionTable::Msdos) }
+        fn get_partition_table(&self) -> Option<PartitionTable> {
+            Some(PartitionTable::Msdos)
+        }
 
         fn get_partition_type_count(&self) -> (usize, usize, bool) {
-            self.partitions.iter().fold((0, 0, false), |sum, &part| match part {
-                PartitionType::Logical => (sum.0, sum.1 + 1, sum.2),
-                PartitionType::Primary => (sum.0 + 1, sum.1, sum.2),
-                PartitionType::Extended => (sum.0, sum.1, true),
-            })
+            self.partitions
+                .iter()
+                .fold((0, 0, false), |sum, &part| match part {
+                    PartitionType::Logical => (sum.0, sum.1 + 1, sum.2),
+                    PartitionType::Primary => (sum.0 + 1, sum.1, sum.2),
+                    PartitionType::Extended => (sum.0, sum.1, true),
+                })
         }
     }
 
@@ -114,7 +124,10 @@ mod tests {
             Err(PartitionTableError::PrimaryPartitionsExceeded)
         );
 
-        assert_eq!(max_extended.supports_additional_partition_type(PartitionType::Logical), Ok(()));
+        assert_eq!(
+            max_extended.supports_additional_partition_type(PartitionType::Logical),
+            Ok(())
+        );
 
         let free = FictionalBlock {
             partitions: vec![
@@ -126,8 +139,14 @@ mod tests {
             ],
         };
 
-        assert_eq!(free.supports_additional_partition_type(PartitionType::Primary), Ok(()));
+        assert_eq!(
+            free.supports_additional_partition_type(PartitionType::Primary),
+            Ok(())
+        );
 
-        assert_eq!(free.supports_additional_partition_type(PartitionType::Logical), Ok(()));
+        assert_eq!(
+            free.supports_additional_partition_type(PartitionType::Logical),
+            Ok(())
+        );
     }
 }

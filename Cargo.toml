@@ -1,6 +1,6 @@
 [package]
 name = "disk-types-aosc"
-version = "0.2.0"
+version = "0.1.1"
 authors = ["Jeremy Soller <jackpot51@gmail.com>", "Michael Aaron Murphy <mmstickman@gmail.com>"]
 description = "Common traits and types for handling block devices, partitions, file systems, etc. (Fork from pop-os/disk-types)"
 repository = "https://github.com/aosc-dev/disk-types"

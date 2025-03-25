@@ -64,8 +64,8 @@ impl FromStr for Sector {
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         if let Some(v_without_end) = input.strip_suffix('M') {
-            if let Some(v_without_start) = input.strip_prefix('-') {
-                if let Ok(value) = v_without_start.parse::<u64>() {
+            if let Some(v_without_start_and_end) = v_without_end.strip_prefix('-') {
+                if let Ok(value) = v_without_start_and_end.parse::<u64>() {
                     return Ok(Sector::MegabyteFromEnd(value));
                 }
             } else if let Ok(value) = v_without_end.parse::<u64>() {

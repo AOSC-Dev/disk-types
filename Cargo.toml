@@ -12,8 +12,8 @@ edition = "2024"
 
 [dependencies]
 sys-mount = "3"
-tempdir = "0.3.7"
-# os-detect = "0.2.2"
+tempfile = "3.19.1"
+os-detect = { version = "0.2", package = "os-detect-aosc" }
 sysfs-class = "0.1.2"
 libparted = "0.1.4"
 thiserror = "2"

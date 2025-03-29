@@ -4,10 +4,11 @@ use crate::{
     usage::sectors_used,
 };
 use libparted::PartitionFlag;
+use os_detect::{OS, detect_os_from_device};
+use tempfile::TempDir;
 // use os_detect::{detect_os_from_device, OS};
 use std::{io, path::Path};
 use sys_mount::*;
-use tempdir::TempDir;
 
 /// Trait to provide methods for interacting with partition-based block device.
 pub trait PartitionExt: BlockDeviceExt {
@@ -73,7 +74,7 @@ pub trait PartitionExt: BlockDeviceExt {
     {
         let mount = self
             .get_file_system()
-            .and_then(|fs| TempDir::new("distinst").ok().map(|t| (fs, t)));
+            .and_then(|fs| TempDir::with_prefix("disk-types").ok().map(|t| (fs, t)));
 
         if let Some((fs, tempdir)) = mount {
             let fs = match fs {
@@ -94,11 +95,12 @@ pub trait PartitionExt: BlockDeviceExt {
         func(None)
     }
 
-    // /// Detects if an OS is installed to this partition, and if so, what the OS
-    // /// is named.
-    // fn probe_os(&self) -> Option<OS> {
-    //     self.get_file_system().and_then(|fs| detect_os_from_device(self.get_device_path(), fs))
-    // }
+    /// Detects if an OS is installed to this partition, and if so, what the OS
+    /// is named.
+    fn probe_os(&self) -> Option<OS> {
+        self.get_file_system()
+            .and_then(|fs| detect_os_from_device(self.get_device_path(), fs))
+    }
 
     /// True if the sectors in the compared partition differs from the source.
     fn sectors_differ_from<P: PartitionExt>(&self, other: &P) -> bool {
